@@ -1,3 +1,5 @@
+#Thuật toán làm ra dựa trên bài báo sau:
+Chen, Xiangchun, et al. "Dynamic task offloading in edge computing based on dependency-aware reinforcement learning." IEEE Transactions on Cloud Computing 12.2 (2024): 594-608.
 # Hướng dẫn ở dưới đây là dành cho hệ điều hành Linux + chạy trên GPU cục bộ
 # ADPRL — Triển khai PyTorch
 
