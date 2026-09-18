@@ -72,7 +72,7 @@ def run_policy_episode(env, gen, policy, num_tasks, is_adprl=False, explore=Fals
 
 
 def evaluate_config(num_tasks, num_subtasks_range, num_nodes, bw_mean, speed_mean,
-                     adprl_lo, adprl_ee, seed, eval_episodes=5, dqn_warmup=50):
+                     adprl_lo, adprl_ee, seed, eval_episodes=5, dqn_warmup=50, skip_dqn=False):
     results = {}
 
     # --- ADPRL (LO / EE) ---
@@ -109,23 +109,26 @@ def evaluate_config(num_tasks, num_subtasks_range, num_nodes, bw_mean, speed_mea
         results[tag] = (np.mean(acts), np.mean(ecs), np.mean(ors))
 
     # --- DQN+FCFS (warmed up quickly then measured) ---
-    env = build_env(num_nodes, bw_mean, speed_mean, 0.5, 0.5, seed)
-    gen = DAGTaskGenerator(num_nodes, subtask_range=num_subtasks_range, seed=seed + 3)
-    dqn = DQNFCFSPolicy(env.state_dim, num_nodes)
-    for _ in range(dqn_warmup):
-        run_policy_episode(env, gen, dqn, num_tasks, is_adprl=False)
-    dqn.eps = 0.02
-    acts, ecs, ors = [], [], []
-    for _ in range(eval_episodes):
-        a, e, o = run_policy_episode(env, gen, dqn, num_tasks, is_adprl=False)
-        acts.append(a); ecs.append(e); ors.append(o)
-    results["DQN+FCFS"] = (np.mean(acts), np.mean(ecs), np.mean(ors))
+    if skip_dqn:
+        results["DQN+FCFS"] = (np.nan, np.nan, np.nan)
+    else:
+        env = build_env(num_nodes, bw_mean, speed_mean, 0.5, 0.5, seed)
+        gen = DAGTaskGenerator(num_nodes, subtask_range=num_subtasks_range, seed=seed + 3)
+        dqn = DQNFCFSPolicy(env.state_dim, num_nodes)
+        for _ in range(dqn_warmup):
+            run_policy_episode(env, gen, dqn, num_tasks, is_adprl=False)
+        dqn.eps = 0.02
+        acts, ecs, ors = [], [], []
+        for _ in range(eval_episodes):
+            a, e, o = run_policy_episode(env, gen, dqn, num_tasks, is_adprl=False)
+            acts.append(a); ecs.append(e); ors.append(o)
+        results["DQN+FCFS"] = (np.mean(acts), np.mean(ecs), np.mean(ors))
 
     return results
 
 
 def sweep_and_plot(param_name, values, fixed, adprl_lo, adprl_ee, out_dir, seed=0,
-                    x_values=None, cfg_key=None):
+                    x_values=None, cfg_key=None, eval_episodes=5, dqn_warmup=50, skip_dqn=False):
     """`values` are used as the x-axis labels; `cfg_key`/each value determine
     what actually gets overridden in the env config (useful when the x-axis
     label differs from the raw config value, e.g. subtasks-per-task)."""
@@ -142,6 +145,7 @@ def sweep_and_plot(param_name, values, fixed, adprl_lo, adprl_ee, out_dir, seed=
         res = evaluate_config(
             cfg["num_tasks"], cfg["num_subtasks_range"], cfg["num_nodes"],
             cfg["bw_mean"], cfg["speed_mean"], adprl_lo, adprl_ee, seed,
+            eval_episodes=eval_episodes, dqn_warmup=dqn_warmup, skip_dqn=skip_dqn,
         )
         for a in algos:
             if a in res:
@@ -199,6 +203,14 @@ def main():
     p.add_argument("--out-dir", type=str, default="results")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--quick", action="store_true", help="smaller sweeps for a fast sanity check")
+    p.add_argument("--eval-episodes", type=int, default=5,
+                    help="episodes averaged per algorithm per config (lower = faster, noisier)")
+    p.add_argument("--dqn-warmup", type=int, default=50,
+                    help="episodes used to (re)train DQN+FCFS from scratch per config; "
+                         "this dominates evaluate.py's runtime -- lower it a lot for a quick look "
+                         "(e.g. 5-10), keep it higher (50-200) for a fairer DQN+FCFS comparison")
+    p.add_argument("--skip-dqn", action="store_true",
+                    help="skip the DQN+FCFS baseline entirely (biggest time saver)")
     args = p.parse_args()
 
     base_nodes = 25
@@ -219,16 +231,21 @@ def main():
     speed_values = [10, 40] if args.quick else [10, 20, 30, 40]
     node_values = [25, 50] if args.quick else [25, 50, 75, 100]
 
-    sweep_and_plot("num_tasks", task_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed)
+    sweep_and_plot("num_tasks", task_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed,
+                   eval_episodes=args.eval_episodes, dqn_warmup=args.dqn_warmup, skip_dqn=args.skip_dqn)
     sweep_and_plot(
         "num_subtasks",
         [(s, s) for s in subtask_values],
         fixed, adprl_lo, adprl_ee, args.out_dir, args.seed,
         x_values=subtask_values, cfg_key="num_subtasks_range",
+        eval_episodes=args.eval_episodes, dqn_warmup=args.dqn_warmup, skip_dqn=args.skip_dqn,
     )
-    sweep_and_plot("bw_mean", bw_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed)
-    sweep_and_plot("speed_mean", speed_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed)
-    sweep_and_plot("num_nodes", node_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed)
+    sweep_and_plot("bw_mean", bw_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed,
+                   eval_episodes=args.eval_episodes, dqn_warmup=args.dqn_warmup, skip_dqn=args.skip_dqn)
+    sweep_and_plot("speed_mean", speed_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed,
+                   eval_episodes=args.eval_episodes, dqn_warmup=args.dqn_warmup, skip_dqn=args.skip_dqn)
+    sweep_and_plot("num_nodes", node_values, fixed, adprl_lo, adprl_ee, args.out_dir, args.seed,
+                   eval_episodes=args.eval_episodes, dqn_warmup=args.dqn_warmup, skip_dqn=args.skip_dqn)
 
     print("[eval] done.")
 
