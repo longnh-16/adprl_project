@@ -1,0 +1,53 @@
+# ==========================================================
+# .gitignore cho project adprl_project
+# Đặt file này ở THƯ MỤC GỐC của repo (cùng cấp với train.py)
+# ==========================================================
+
+# --- Virtual environments (đặt lên đầu, dùng / ở đầu để chỉ match ở gốc repo) ---
+/.venv/
+/venv/
+/env/
+/ENV/
+.venv/
+venv/
+env/
+ENV/
+
+# --- Python cache / build artifacts ---
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.cache/
+
+# --- Training / evaluation outputs (file lớn hoặc tự sinh lại được, không cần commit) ---
+/runs/
+/results/
+/results_quick/
+/results_smoke/
+*.pt
+*.pth
+*_history.json
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Jupyter (nếu có thử nghiệm bằng notebook) ---
+.ipynb_checkpoints/
+
+# --- File env có thể chứa thông tin nhạy cảm / đường dẫn máy cá nhân ---
+.env
+.env.local
