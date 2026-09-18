@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+# Hướng dẫn ở dưới đây là dành cho hệ điều hành Linux + chạy trên GPU cục bộ
 # ADPRL — Triển khai PyTorch
 
 Triển khai thuật toán **ADPRL (Asynchronous Deep Progressive Reinforcement Learning)**
@@ -268,6 +268,3 @@ python3 evaluate.py --lo-model runs/smoke_lo.pt --out-dir results_smoke --quick
 
 Nếu 2 lệnh trên chạy xong không lỗi và tạo ra file trong `runs/`, `results_smoke/`
 thì môi trường của bạn đã sẵn sàng để chạy full training/evaluation trên GPU.
-=======
-# adprl_project
->>>>>>> 22125342b7f3827e3b609ab288eba1e03e03c991
